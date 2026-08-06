@@ -120,18 +120,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  const selectedText = (info.selectionText || "").trim();
-  if (!selectedText) {
+// 核心动作：菜单项点击 → API 调用 → 通知页面（抽取供测试直调）
+async function handleAction(tplId, selectionText, tab) {
+  if (!selectionText) {
     notifyContent(tab, { type: "AI_ERROR", error: "EMPTY_SELECTION" });
     return;
   }
-
-  const menuId = info.menuItemId;
-  if (typeof menuId !== "string" || !menuId.startsWith("tpl:")) {
-    return;
-  }
-  const tplId = menuId.slice(4);
 
   const settings = await getSettings();
   const tpl = settings.templates.find((t) => t.id === tplId);
@@ -148,7 +142,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   });
 
   try {
-    const prompt = renderPrompt(tpl.prompt, selectedText);
+    const prompt = renderPrompt(tpl.prompt, selectionText);
     const result = await callAI(settings, prompt);
     notifyContent(tab, {
       type: "AI_RESULT",
@@ -163,6 +157,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       error: err.message || "UNKNOWN",
     });
   }
+}
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  const menuId = info.menuItemId;
+  if (typeof menuId !== "string" || !menuId.startsWith("tpl:")) {
+    return;
+  }
+  await handleAction(menuId.slice(4), (info.selectionText || "").trim(), tab);
 });
 
 function notifyContent(tab, payload) {
