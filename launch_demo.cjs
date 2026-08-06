@@ -53,15 +53,18 @@ async function main() {
   await page.waitForTimeout(800);
   // 页面上放一段可选的文本
   await page.evaluate(() => {
-    document.body.innerHTML = `<div style="font-family:sans-serif;padding:40px;max-width:700px;margin:0 auto;line-height:1.8">
+    document.body.innerHTML = `<div style="font-family:sans-serif;padding:40px;max-width:760px;margin:0 auto;line-height:1.9">
       <h1>AI 文本助手 · 演示页</h1>
       <p>1. 用鼠标选中下面任意一段文字</p>
       <p>2. 右键 → 「AI 文本助手」→ 选一个动作（润色/翻译/总结/纠错）</p>
       <p>3. 浮窗出现结果 → 复制或替换原文</p>
       <hr>
-      <p id="demo1">这是一个演示文本，它的表达比较粗糙，希望得到润色改善，让它读起来更流畅更专业。这是一段中文内容，包含了多个句子，用来测试右键菜单的完整流程是否正常工作。</p>
-      <p id="demo2">This is an English sentence used to test the translation feature. If everything works, this text will be translated into Chinese.</p>
-      <p id="demo3">2026年8月6日，我们完成了一个Chrome扩展的样品开发，它可以在浏览器里直接对选中文字进行AI处理。</p>
+      <p id="demo1"><b>① 简单中文（试润色/总结）：</b>这是一个演示文本，它的表达比较粗糙，希望得到润色改善，让它读起来更流畅更专业。这是一段中文内容，包含了多个句子，用来测试右键菜单的完整流程是否正常工作。</p>
+      <p id="demo2"><b>② 简单英文（试翻译/润色）：</b>This is an English sentence used to test the translation feature. If everything works, this text will be translated into Chinese.</p>
+      <p id="demo3"><b>③ 中文（试总结）：</b>2026年8月6日，我们完成了一个Chrome扩展的样品开发，它可以在浏览器里直接对选中文字进行AI处理。</p>
+      <p id="demo4"><b>④ 复杂长句（试润色/总结深度）：</b>在数字化转型浪潮的推动下，传统制造业企业正面临着一个前所未有的结构性挑战：如何在保持既有供应链稳定性的同时，通过数据驱动的方式重构其核心业务流程，进而实现从经验驱动向智能决策的范式转换——这不仅是技术层面的革新，更牵涉组织能力重塑与商业模式升级的系统性工程，需要企业从战略高度统筹规划、分步推进，并持续投入资源进行能力建设与人才培养。</p>
+      <p id="demo5"><b>⑤ 有错误的中文（试纠错）：</b>今天早上我去的图书馆借了几本书，回来的时候在路上碰到了同学小李，他告诉我他昨天买了个新手机，那个手机的屏幕特别的大，看电影非常的清楚，我很羡慕他，但是我的手机还能用，所以决定不换手机了，等明年在说吧。</p>
+      <p id="demo6"><b>⑥ 有错误的英文（试纠错/翻译）：</b>This sentence have several grammer mistakes. He don't like apples, and she doesn't likes oranges. They was going to the store yesterday but it was closed.</p>
     </div>`;
   });
 
