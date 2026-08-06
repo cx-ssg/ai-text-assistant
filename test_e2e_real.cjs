@@ -6,13 +6,17 @@
 const { chromium } = require("C:/Users/cx101/AppData/Roaming/npm/node_modules/playwright");
 const fs = require("fs");
 const path = require("path");
+const http = require("http");
 
 const EXT_PATH = __dirname;
 const ENV_PATH = "C:/Users/cx101/AppData/Local/hermes/profiles/editor/.env";
 // 实测（2026-08-06）：DeepSeek 官方 key 已失效（08-04 切 Go），SiliconFlow/DashScope 可用。
 // 扩展 manifest 已含 api.siliconflow.cn → 用 SiliconFlow 做真实端到端。
+// 模型选择教训（#35 语义断言引出）：Qwen2.5-7B-Instruct 翻译/润色全抽风（幻觉乱码）；
+// Qwen2.5-72B 翻译正常但中文润色输出英文（指令遵循不稳定）；
+// deepseek-ai/DeepSeek-V3 两者均稳定（润色保持中文 ✅ / 翻译输出含中文 ✅）——测试用模型定 DeepSeek-V3。
 const TEST_BASE_URL = "https://api.siliconflow.cn/v1";
-const TEST_MODEL = "Qwen/Qwen2.5-7B-Instruct";
+const TEST_MODEL = "deepseek-ai/DeepSeek-V3";
 
 function loadKey() {
   const content = fs.readFileSync(ENV_PATH, "utf-8");
@@ -32,9 +36,32 @@ function check(name, ok, detail = "") {
   console.log(`${ok ? "✅" : "❌"} ${name}${detail ? " — " + detail : ""}`);
 }
 
+// #35 语义断言：翻译必须输出中文、润色必须保持输入语言
+function hasChinese(text) {
+  return /[\u4e00-\u9fff]/.test(text);
+}
+
+// 本地测试页服务器：测试只依赖本机，不依赖外网可达性（example.com 曾两次超时，
+// 根因：playwright Chromium 不走系统代理，外网页面不可控）
+function startLocalServer() {
+  return new Promise((resolve) => {
+    const server = http.createServer((req, res) => {
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(`<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"></head>
+        <body><p id="target">这是一段用于端到端测试的文本，它的表达比较粗糙，希望得到润色改善。</p>
+        <p id="target-en">This is a short English sentence for translation testing.</p></body></html>`);
+    });
+    server.listen(0, "127.0.0.1", () => resolve(server));
+  });
+}
+
 async function main() {
   const apiKey = loadKey();
   console.log(`读取 key：${mask(apiKey)}`);
+
+  const server = await startLocalServer();
+  const port = server.address().port;
+  const TEST_PAGE = `http://127.0.0.1:${port}/`;
 
   const ctx = await chromium.launchPersistentContext("", {
     headless: false,
@@ -60,14 +87,14 @@ async function main() {
     const s = d.settings || {};
     s.apiKey = key;
     s.baseUrl = "https://api.siliconflow.cn/v1";
-    s.model = "Qwen/Qwen2.5-7B-Instruct";
+    s.model = "deepseek-ai/DeepSeek-V3";
     await chrome.storage.local.set({ settings: s });
   }, apiKey);
   check("真实 key 已写入 storage（打码）", true);
 
-  // 打开内容页（content script 注入）
+  // 打开内容页（content script 注入）——本地页，不依赖外网
   const page = await ctx.newPage();
-  await page.goto("https://example.com", { timeout: 20000 });
+  await page.goto(TEST_PAGE, { timeout: 20000 });
   await page.waitForTimeout(800);
 
   const tabs = await sw.evaluate(async () => chrome.tabs.query({}));
@@ -106,6 +133,8 @@ async function main() {
   if (floatText && !floatText.startsWith("ERR:")) {
     check("结果有实际内容", floatText.length > 20, `前 80 字：${floatText.slice(0, 80)}…`);
     check("结果与输入不同（真的润色了）", floatText !== testText);
+    // #35：输入为中文 → 润色输出必须仍是中文（防"润色英文被翻成中文"类回归）
+    check("润色输出保持中文（同语言）", hasChinese(floatText), hasChinese(floatText) ? "" : `输出无中文字符：${floatText.slice(0, 60)}`);
   } else {
     console.log("  错误详情:", floatText);
   }
@@ -128,10 +157,13 @@ async function main() {
     if (translateText && !translateText.includes("正在")) break;
     await new Promise((r) => setTimeout(r, 500));
   }
-  check("翻译动作真实返回", !!translateText && !translateText.startsWith("ERR:") && translateText.length > 5,
-    translateText ? `前 60 字：${translateText.slice(0, 60)}…` : "无结果");
+  // #35：输入为英文 → 翻译输出必须含中文（原来只查 length>5 的弱断言，乱码/原文透传也算过）
+  check("翻译输出为中文（语义断言）",
+    !!translateText && !translateText.startsWith("ERR:") && hasChinese(translateText) && translateText.length > 5,
+    translateText ? `前 60 字：${translateText.slice(0, 60)}…（含中文: ${hasChinese(translateText || "")}）` : "无结果");
 
   await ctx.close();
+  server.close();
   console.log("\n=== 结果 ===");
   console.log(results.filter((r) => r.ok).length + "/" + results.length + " 通过");
   process.exit(results.every((r) => r.ok) ? 0 : 1);
