@@ -23,7 +23,7 @@ let current = null;
 const $ = (id) => document.getElementById(id);
 
 async function loadSettings() {
-  const data = await chrome.storage.sync.get("settings");
+  const data = await chrome.storage.local.get("settings");
   current = { ...DEFAULTS, ...(data.settings || {}), templates: (data.settings?.templates || DEFAULTS.templates) };
   if (!Array.isArray(current.templates) || current.templates.length === 0) {
     current.templates = DEFAULTS.templates;
@@ -33,25 +33,12 @@ async function loadSettings() {
 function fillForm() {
   $("apiKey").value = current.apiKey || "";
   $("model").value = current.model || "";
-  if (PRESET_URLS[current.baseUrl]) {
-    $("baseUrl").value = current.baseUrl;
-    $("baseUrlCustom").style.display = "none";
-  } else {
-    $("baseUrl").value = "custom";
-    $("baseUrlCustom").style.display = "block";
-    $("baseUrlCustom").value = current.baseUrl || "";
-  }
+  $("baseUrl").value = current.baseUrl;
   renderTemplates();
 }
 
 function collectForm() {
-  let baseUrl = $("baseUrl").value;
-  if (baseUrl === "custom") {
-    baseUrl = $("baseUrlCustom").value.trim();
-    if (!baseUrl) {
-      throw new Error("请填写自定义接口地址");
-    }
-  }
+  const baseUrl = $("baseUrl").value;
   const templates = [];
   document.querySelectorAll(".tpl-item").forEach((item) => {
     const id = item.dataset.id;
@@ -105,7 +92,7 @@ function setStatus(text, ok) {
 async function save() {
   try {
     const settings = collectForm();
-    await chrome.storage.sync.set({ settings });
+    await chrome.storage.local.set({ settings });
     current = settings;
     setStatus("✅ 已保存（右键菜单模板已同步）", true);
   } catch (err) {
@@ -146,7 +133,5 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("saveBtn").addEventListener("click", save);
   $("testBtn").addEventListener("click", testConnection);
   $("addTplBtn").addEventListener("click", addTemplate);
-  $("baseUrl").addEventListener("change", () => {
-    $("baseUrlCustom").style.display = $("baseUrl").value === "custom" ? "block" : "none";
-  });
+
 });

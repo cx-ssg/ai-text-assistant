@@ -56,7 +56,7 @@ async function main() {
   let settings = null;
   for (let i = 0; i < 10; i++) {
     settings = await sw.evaluate(async () => {
-      const d = await chrome.storage.sync.get("settings");
+      const d = await chrome.storage.local.get("settings");
       return d.settings || null;
     });
     if (settings) break;
@@ -77,7 +77,7 @@ async function main() {
   check("options 保存提示", statusText.includes("已保存"), statusText);
 
   const saved = await sw.evaluate(async () => {
-    const d = await chrome.storage.sync.get("settings");
+    const d = await chrome.storage.local.get("settings");
     return d.settings;
   });
   check("storage 持久化 key", saved?.apiKey === "sk-test-fake-key-123456");
@@ -92,7 +92,7 @@ async function main() {
   await optionsPage.click("#saveBtn");
   await optionsPage.waitForTimeout(500);
   const saved2 = await sw.evaluate(async () => {
-    const d = await chrome.storage.sync.get("settings");
+    const d = await chrome.storage.local.get("settings");
     return d.settings?.templates?.length;
   });
   check("自定义模板已保存", saved2 === 5, `tpl 数量=${saved2}`);

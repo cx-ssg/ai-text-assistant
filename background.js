@@ -18,12 +18,12 @@ const DEFAULT_SETTINGS = {
 // ---------- 存储 ----------
 
 async function getSettings() {
-  const data = await chrome.storage.sync.get("settings");
+  const data = await chrome.storage.local.get("settings");
   return { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
 }
 
 async function saveSettings(settings) {
-  await chrome.storage.sync.set({ settings });
+  await chrome.storage.local.set({ settings });
 }
 
 // ---------- 菜单 ----------
@@ -84,7 +84,7 @@ async function callAI({ apiKey, baseUrl, model }, prompt) {
   });
 
   if (!resp.ok) {
-    const detail = await resp.text().catch(() => "");
+    const detail = scrubSecret(await resp.text().catch(() => ""));
     throw new Error(`API_ERROR:${resp.status}:${detail.slice(0, 200)}`);
   }
 
@@ -94,6 +94,14 @@ async function callAI({ apiKey, baseUrl, model }, prompt) {
     throw new Error("API_EMPTY_RESPONSE");
   }
   return text.trim();
+}
+
+
+// 错误详情脱敏：防止第三方 API 回显完整 key/凭据
+function scrubSecret(text) {
+  return String(text)
+    .replace(/(sk-[A-Za-z0-9_-]{6})[A-Za-z0-9_-]+/g, "$1***")
+    .replace(/(Bearer\s+)[A-Za-z0-9._-]+/gi, "$1***");
 }
 
 function renderPrompt(templatePrompt, selectedText) {
@@ -115,7 +123,7 @@ chrome.runtime.onStartup.addListener(() => {
 
 // 设置页改动 → 重建菜单（模板增删即时生效）
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "sync" && changes.settings) {
+  if (area === "local" && changes.settings) {
     rebuildMenus();
   }
 });

@@ -54,12 +54,12 @@ async function main() {
 
   // 写入真实 key + 测试模型
   await sw.evaluate(async (key) => {
-    const d = await chrome.storage.sync.get("settings");
+    const d = await chrome.storage.local.get("settings");
     const s = d.settings || {};
     s.apiKey = key;
     s.baseUrl = "https://api.siliconflow.cn/v1";
     s.model = "Qwen/Qwen2.5-7B-Instruct";
-    await chrome.storage.sync.set({ settings: s });
+    await chrome.storage.local.set({ settings: s });
   }, apiKey);
   check("真实 key 已写入 storage（打码）", true);
 
