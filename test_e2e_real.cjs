@@ -1,5 +1,7 @@
 // AI 文本助手 - 真实 DeepSeek key 端到端测试
 // 运行：node test_e2e_real.cjs
+// ⚠️ 依赖外部环境：真实 API key 从 C:/Users/cx101/AppData/Local/hermes/profiles/editor/.env 读取
+//    （SILICONFLOW_API_KEY），换机/无此 key 时本测试不可复现，且真实调用产生微量费用。
 // 安全：key 从 Hermes .env 读取，仅注入测试进程，输出全程打码（sk-***末4位）
 const { chromium } = require("C:/Users/cx101/AppData/Roaming/npm/node_modules/playwright");
 const fs = require("fs");

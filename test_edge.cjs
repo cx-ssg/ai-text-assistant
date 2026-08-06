@@ -1,5 +1,7 @@
 // AI 文本助手 - 边界测试
 // 运行：node test_edge.cjs
+// ⚠️ 依赖外部环境：真实 API key 从 C:/Users/cx101/AppData/Local/hermes/profiles/editor/.env 读取
+//    （SILICONFLOW_API_KEY），换机/无此 key 时本测试不可复现，且真实调用产生微量费用。
 const { chromium } = require("C:/Users/cx101/AppData/Roaming/npm/node_modules/playwright");
 
 const EXT_PATH = __dirname;

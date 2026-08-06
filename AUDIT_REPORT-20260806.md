@@ -55,3 +55,16 @@ decision: approve
 
 ---
 审计人：Hermes Editor | 2026-08-06 | 材料独立取读，测试独立复跑
+
+---
+
+## 复审轮次（2026-08-06 19:3x）
+
+reviewer: hermes-editor
+decision: approve
+
+**结论**：首轮 3🟡+2⚪ 五项修复全部真实落地（读文件 + 全库 grep + 字节级绕过脱敏 + 实测），无 🔴，残留 1🟡（测试依赖外部 key 环境，已补头部注释）+ 2⚪（内容落点断言需测试钩子 / scrub 前 6 位妥协），不阻塞。
+
+**逐项核查**：① manifest 死权限已删（仅剩 3 域名与实际调用一致）② storage.sync 全库 0 命中（background/options 全走 local + onChanged 限定 local）③ custom 选项全库 0 残留 ④ scrubSecret 存在且 401 实测无 key 明文外泄 ⑤ 替换按钮测试真实执行（9/9 全绿，floatGone + bodyText 佐证）。
+**实测**：test_smoke 17/17 + test_edge 9/9（独立复跑 exit 0）。
+**置信度**：🟢 5/5 全部独立核实；🔴 0。
