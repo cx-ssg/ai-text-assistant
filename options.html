@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI 文本助手设置</title>
+  <style>
+    body {
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      max-width: 640px; margin: 0 auto; padding: 32px 24px; color: #1f2937; background: #f9fafb;
+    }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    .sub { color: #6b7280; font-size: 13px; margin-bottom: 24px; }
+    .card {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+      padding: 20px; margin-bottom: 16px;
+    }
+    .card h2 { font-size: 15px; margin: 0 0 12px; }
+    label { display: block; font-size: 13px; color: #374151; margin: 10px 0 4px; }
+    input, select, textarea {
+      width: 100%; box-sizing: border-box; padding: 8px 10px;
+      border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;
+    }
+    textarea { min-height: 80px; font-family: inherit; resize: vertical; }
+    .row { display: flex; gap: 12px; }
+    .row > div { flex: 1; }
+    button {
+      padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;
+    }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-ghost { background: #f3f4f6; color: #374151; }
+    .btn-danger { background: #fee2e2; color: #b91c1c; }
+    .tpl-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+    .tpl-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .tpl-head input { width: 140px; }
+    .status { margin-top: 12px; font-size: 13px; min-height: 20px; }
+    .status.ok { color: #16a34a; }
+    .status.err { color: #dc2626; }
+    .hint { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+    .actions { display: flex; gap: 8px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <h1>⚡ AI 文本助手</h1>
+  <div class="sub">自带 Key 模式（BYOK）：你的文本只发送到你配置的 API 提供商，不经过任何第三方中转。</div>
+
+  <div class="card">
+    <h2>API 配置</h2>
+    <label>API Key</label>
+    <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off" />
+    <label>接口地址（Base URL）</label>
+    <select id="baseUrl">
+      <option value="https://api.deepseek.com">DeepSeek（国内直连，推荐）</option>
+      <option value="https://api.openai.com">OpenAI</option>
+      <option value="https://api.siliconflow.cn">SiliconFlow 硅基流动</option>
+      <option value="custom">自定义（OpenAI 兼容）</option>
+    </select>
+    <input type="text" id="baseUrlCustom" placeholder="https://your-api.example.com" style="display:none; margin-top:8px;" />
+    <label>模型</label>
+    <input type="text" id="model" placeholder="deepseek-chat" />
+    <div class="actions">
+      <button class="btn-primary" id="saveBtn">💾 保存</button>
+      <button class="btn-ghost" id="testBtn">🔌 测试连通</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="card">
+    <h2>右键菜单模板</h2>
+    <div class="hint" style="margin-bottom:12px;">提示词中用 <code>{{TEXT}}</code> 代表选中文本。改动保存后立即生效。</div>
+    <div id="tplList"></div>
+    <button class="btn-ghost" id="addTplBtn">＋ 添加模板</button>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
