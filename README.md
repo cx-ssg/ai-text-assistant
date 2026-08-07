@@ -78,7 +78,7 @@ node test_e2e_real.cjs#  8 —— 真实 API 端到端（需 SILICONFLOW_API_KEY
 
 ```bash
 node tools/pre_publish_scan.cjs             # ① 敏感路径（.env/.pem/.key）② 真实密钥模式 ③ 未追踪敏感文件
-node tools/pre_publish_scan.cjs --selftest  # 自测：15 项阳性/阴性对照（改脚本后必跑）
+node tools/pre_publish_scan.cjs --selftest  # 自测：19 项阳性/阴性对照（改脚本后必跑）
 ```
 
 - 扫描通过（exit 0）才能 push；发现密钥（`sk-` 长串 / GitHub PAT / 私钥块 / `api_key=` 赋值等）→ 替换为占位符 → 重扫通过后再 push
