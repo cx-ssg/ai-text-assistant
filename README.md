@@ -72,6 +72,18 @@ node test_e2e_real.cjs#  8 —— 真实 API 端到端（需 SILICONFLOW_API_KEY
 
 > e2e 语义断言（`/[\u4e00-\u9fff]/`）：翻译输出必须含中文、润色必须保持原文语言——防止"润色被翻成另一种语言"类回归。
 
+## 🛡️ 发布前检查 / Pre-publish check
+
+公开仓库 push 前必跑（蒸馏盲区 #39 固化：防密钥泄露，L-034/L-036 适用对象升级为公开仓库后强制）：
+
+```bash
+node tools/pre_publish_scan.cjs             # ① 敏感路径（.env/.pem/.key）② 真实密钥模式 ③ 未追踪敏感文件
+node tools/pre_publish_scan.cjs --selftest  # 自测：15 项阳性/阴性对照（改脚本后必跑）
+```
+
+- 扫描通过（exit 0）才能 push；发现密钥（`sk-` 长串 / GitHub PAT / 私钥块 / `api_key=` 赋值等）→ 替换为占位符 → 重扫通过后再 push
+- 演示视频受回归保护（#40）：`node auto_demo.cjs` 的 4 动作全部带语义断言（润色保持中文 / 翻译输出中文 / 输出≠输入），任一失败则不更新 `demos/demo.webm` 并 exit 1
+
 ## 📋 路线图 / Roadmap
 
 - [x] MVP（右键菜单 + 4 内置动作 + 自定义模板 + BYOK）

@@ -1,6 +1,8 @@
 // AI 文本助手 - 演示录屏脚本（playwright recordVideo，输出 demos/demo.webm）
 // 运行：node auto_demo.cjs
 // 流程：演示页 → 依次触发 润色/翻译/总结/纠错（真实 API）→ 每步停顿让视频有节奏
+// #40：4 动作全部带语义断言（对齐 e2e #35：润色保持原文语言/翻译输出中文/总结纠错含中文且≠输入）
+//       任一断言失败 → 汇总打印 → exit 1（demo.webm 受回归保护）
 const { chromium } = require("C:/Users/cx101/AppData/Roaming/npm/node_modules/playwright");
 const fs = require("fs");
 const path = require("path");
@@ -10,6 +12,17 @@ const EXT_PATH = __dirname;
 const ENV_PATH = "C:/Users/cx101/AppData/Local/hermes/profiles/editor/.env";
 const OUT_DIR = path.join(EXT_PATH, "demos");
 const MODEL = "deepseek-ai/DeepSeek-V3"; // e2e 验证过的稳定模型
+
+// #40 语义断言（复用 e2e #35 的 hasChinese）：输出必须含中文字符
+function hasChinese(text) {
+  return /[\u4e00-\u9fff]/.test(text);
+}
+
+const results = [];
+function check(name, ok, detail = "") {
+  results.push({ name, ok });
+  console.log(`${ok ? "✅" : "❌"} ${name}${detail ? " — " + detail : ""}`);
+}
 
 function loadKey() {
   const content = fs.readFileSync(ENV_PATH, "utf-8");
@@ -118,15 +131,44 @@ async function main() {
     { sel: "#demo4", tpl: "tpl-fix", text: "今天早上我去的图书馆借了几本书，回来的时候在路上碰到了同学小李，他告诉我他昨天买了个新手机，那个手机的屏幕特别的大，看电影非常的清楚，我很羡慕他，但是我的手机还能用，所以决定不换手机了，等明年在说吧。", label: "纠错" },
   ];
 
+  // #40 每个动作的语义断言（按模板类型）
+  function assertAction(a, r) {
+    const base = `[${a.label}] 有结果（非 ERR/非等待）`;
+    check(base, !!r && !r.startsWith("ERR:") && !r.includes("正在"), r ? "" : "无结果");
+    if (!r || r.startsWith("ERR:") || r.includes("正在")) return;
+    check(`[${a.label}] 输出有实际内容`, r.length > 10, `前 40 字：${r.slice(0, 40)}…`);
+    if (a.tpl === "tpl-translate") {
+      // 输入英文 → 输出必须含中文（对齐 e2e #35）
+      check(`[${a.label}] 输出为中文（语义断言）`, hasChinese(r), hasChinese(r) ? "" : `输出无中文字符：${r.slice(0, 60)}`);
+    } else {
+      // 润色/总结/纠错：输入为中文 → 输出保持中文且与输入不同（防透传/防翻成英文）
+      check(`[${a.label}] 输出保持中文（语义断言）`, hasChinese(r), hasChinese(r) ? "" : `输出无中文字符：${r.slice(0, 60)}`);
+      check(`[${a.label}] 输出≠输入（真的处理了）`, r !== a.text, r === a.text ? "输出与输入完全一致（疑似透传）" : "");
+    }
+  }
+
   for (const a of acts) {
     await selectText(page, a.sel);
     await page.waitForTimeout(1200); // 让观众看到选中高亮
     const r = await runAction(sw, page, a.tpl, a.text, demoTabId);
-    console.log(`${a.label}: ${r ? "OK " + r.slice(0, 40) + "…" : "无结果"}`);
+    assertAction(a, r);
+    console.log(`  结果片段: ${r ? r.slice(0, 40) + "…" : "无结果"}`);
     await page.waitForTimeout(2500); // 结果展示停顿
   }
 
   await page.waitForTimeout(1500);
+
+  // #40 汇总断言结果：任一失败 → exit 1 且不覆盖成品 demo.webm（防坏视频回滚好视频）
+  const failed = results.filter((r) => !r.ok);
+  console.log(`\n=== 断言结果：${results.length - failed.length}/${results.length} 通过 ===`);
+  if (failed.length > 0) {
+    for (const f of failed) console.log(`  ❌ ${f.name}`);
+    await ctx.close();
+    server.close();
+    console.log("❌ demo 断言失败，demo.webm 未更新");
+    process.exit(1);
+  }
+
   // 稳妥方式：close 后视频文件自动落盘，再从 video.path() 复制（saveAs 在 context 开着时会挂起等待 flush）
   const video = page.video();
   const vpath = video ? await video.path() : null;
