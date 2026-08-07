@@ -82,6 +82,7 @@ node tools/pre_publish_scan.cjs --selftest  # 自测：15 项阳性/阴性对照
 ```
 
 - 扫描通过（exit 0）才能 push；发现密钥（`sk-` 长串 / GitHub PAT / 私钥块 / `api_key=` 赋值等）→ 替换为占位符 → 重扫通过后再 push
+- 限制说明：被 `.gitignore` 忽略的敏感文件不在扫描范围（其本不会被 push）；untracked 但文件名正常的新文件会做内容扫描（防硬编码 key 被误 add）
 - 演示视频受回归保护（#40）：`node auto_demo.cjs` 的 4 动作全部带语义断言（润色保持中文 / 翻译输出中文 / 输出≠输入），任一失败则不更新 `demos/demo.webm` 并 exit 1
 
 ## 📋 路线图 / Roadmap

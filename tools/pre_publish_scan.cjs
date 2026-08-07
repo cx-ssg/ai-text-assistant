@@ -53,8 +53,25 @@ function git(cmd) {
   return execSync(cmd, { encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] });
 }
 
+// 打码：对行内匹配到的密钥形态做中间替换（保留首尾，中间 ***），防 CI 日志二次泄露（L-135）
+function maskToken(t) {
+  if (!t || t.length <= 10) return t;
+  return t.slice(0, 4) + "***" + t.slice(-4);
+}
+
 function maskContext(line) {
-  return line.length > 120 ? line.slice(0, 120) + "…" : line;
+  let out = line;
+  for (const { re, name } of SECRET_PATTERNS) {
+    // ⚠️ 必须克隆：共享正则的 lastIndex 会被全局 replace 改写，
+    //    破坏外层 scanFileContent 的 while(re.exec) 推进 → 无限循环（L-135 实证）
+    const r = new RegExp(re.source, re.flags);
+    out = out.replace(r, (full, g1) => {
+      const target = name === "api_key assignment" && g1 ? g1 : full;
+      const masked = maskToken(target);
+      return target === full ? masked : full.replace(target, masked);
+    });
+  }
+  return out.length > 120 ? out.slice(0, 120) + "…" : out;
 }
 
 function scanTrackedPaths(tracked) {
@@ -116,6 +133,18 @@ function selftest() {
   t("普通文件不误报", scanTrackedPaths(["background.js", "README.md"]).length === 0);
   t("未追踪 .env 检测", scanUntracked([".env", "demo.txt"]).length === 1);
   t("未追踪普通文件不误报", scanUntracked(["demo.txt", "notes.md"]).length === 0);
+  // maskContext 打码（L-135：打码声称必须实测输出，不能只看函数名）
+  const maskedLine = maskContext(pos[0]); // sk- 长串样例
+  t("maskContext 输出含 ***", maskedLine.includes("***"));
+  t("maskContext 输出不含完整密钥", !maskedLine.includes("abcdefghijklmnopqrstuvwxyz"));
+  // 回归（L-135）：maskContext 不得破坏外层 exec 循环的 lastIndex 推进（曾致无限循环 OOM）
+  const probeRe = /sk-[A-Za-z0-9]{16,}/g;
+  probeRe.lastIndex = 0;
+  const first = probeRe.exec(pos[0]);
+  maskContext(pos[0]);
+  const second = probeRe.exec(pos[0]);
+  t("maskContext 不破坏 exec 推进（首次命中）", first !== null);
+  t("maskContext 不破坏 exec 推进（二次 exec 推进到 null）", second === null);
 
   console.log(`selftest: ${pass} 通过 / ${fail} 失败`);
   return fail === 0;
@@ -145,11 +174,17 @@ function main() {
     failures.push(...scanFileContent(f, content));
   }
 
-  // 未追踪敏感文件（防误 add）
+  // 未追踪敏感文件（防误 add）：① 文件名敏感 ② 内容含密钥（文件名正常但硬编码 key 的新文件，L-135 实证）
   let untracked = [];
   try { untracked = git("git ls-files --others --exclude-standard").split("\n").filter(Boolean); }
   catch (e) { /* 忽略 */ }
   failures.push(...scanUntracked(untracked));
+  for (const f of untracked) {
+    if (/\.(webm|mp4|png|jpg|jpeg|gif|ico|zip)$/i.test(f)) continue;
+    let content;
+    try { content = fs.readFileSync(path.join(root, f), "utf-8"); } catch (e) { continue; }
+    for (const hit of scanFileContent(f, content)) failures.push("  [未追踪内容] " + hit.trim());
+  }
 
   console.log(`扫描 ${tracked.length} 个追踪文件 + ${untracked.length} 个未追踪文件`);
   if (failures.length === 0) {
