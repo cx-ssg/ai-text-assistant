@@ -110,6 +110,22 @@ function renderPrompt(templatePrompt, selectedText) {
 
 // ---------- 事件 ----------
 
+// activeTab 模式：菜单点击时按需注入 content script（用户手势自动授予当前标签页临时权限）
+async function ensureContentScript(tab) {
+  if (!tab?.id) return false;
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["content.js"],
+    });
+    return true;
+  } catch (e) {
+    // 受限页面（chrome:// 等）注入失败，忽略
+    console.warn("[AI助手] 注入失败:", e?.message);
+    return false;
+  }
+}
+
 chrome.runtime.onInstalled.addListener(async () => {
   const settings = await getSettings();
   // 首次安装：写入默认设置
@@ -172,6 +188,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (typeof menuId !== "string" || !menuId.startsWith("tpl:")) {
     return;
   }
+  // activeTab：先注入 content script，再处理动作
+  await ensureContentScript(tab);
   await handleAction(menuId.slice(4), (info.selectionText || "").trim(), tab);
 });
 

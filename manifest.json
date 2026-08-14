@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "AI 文本助手 - 选中即用",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "选中网页文字，右键一键 AI 润色/翻译/总结/纠错。自带 Key 模式（BYOK），支持 DeepSeek 及 OpenAI 兼容接口，国内直连免代理。",
-  "permissions": ["contextMenus", "storage"],
+  "permissions": ["contextMenus", "storage", "activeTab", "scripting"],
   "host_permissions": [
     "https://api.deepseek.com/*",
     "https://api.openai.com/*",
@@ -12,13 +12,6 @@
   "background": {
     "service_worker": "background.js"
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
-    }
-  ],
   "action": {
     "default_title": "AI 文本助手设置",
     "default_icon": {
